@@ -90,12 +90,25 @@ class Division:
         return: dictionary of saturated edges that maps team pairs to
         the amount of additional games they have against each other
         '''
+        saturated_edges = {}
+        for team in self.teams.values():
+            for oteam in self.teams.values():
+                if team != oteam and team != teamID and oteam != teamID:
+                    saturated_edges[(team,oteam)] =  team.get_against(oteam)
+        self.G.add_weighted_edges_from(saturated_edges)
+        return saturated_edges
 
+        '''
         saturated_edges = {}
 
-        #TODO: implement this
-
+        print(self.teams)
+        for team in enumerate(self.teams):
+            for oteam in enumerate(self.teams):
+                if team != oteam and team != teamID and oteam != teamID:
+                    saturated_edges[(team,oteam)] =  self.teams[team].get_against(oteam.ID)
+        self.G.add_weighted_edges_from(saturated_edges)
         return saturated_edges
+        '''
 
     def network_flows(self, saturated_edges):
         '''Uses network flows to determine if the team with given team ID
