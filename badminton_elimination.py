@@ -94,36 +94,34 @@ class Division:
         for team in self.teams.values():
             for oteam in self.teams.values():
                 if team != oteam and team != teamID and oteam != teamID:
-                    saturated_edges[(team,oteam)] =  team.get_against(oteam)
-        self.G.add_weighted_edges_from(saturated_edges)
+                    saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
+        self.G.add_edges_from(saturated_edges)
+        print(saturated_edges)
         return saturated_edges
 
-        '''
-        saturated_edges = {}
-
-        print(self.teams)
-        for team in enumerate(self.teams):
-            for oteam in enumerate(self.teams):
-                if team != oteam and team != teamID and oteam != teamID:
-                    saturated_edges[(team,oteam)] =  self.teams[team].get_against(oteam.ID)
-        self.G.add_weighted_edges_from(saturated_edges)
-        return saturated_edges
-        '''
-
-    def network_flows(self, saturated_edges):
-        '''Uses network flows to determine if the team with given team ID
-        has been eliminated. You can feel free to use the built in networkx
-        maximum flow function or the maximum flow function you implemented as
-        part of the in class implementation activity.
-
-        saturated_edges: dictionary of saturated edges that maps team pairs to
-        the amount of additional games they have against each other
-        return: True if team is eliminated, False otherwise
-        '''
-
-        #TODO: implement this
-
-        return False
+    # def network_flows(self, saturated_edges):
+    #     '''Uses network flows to determine if the team with given team ID
+    #     has been eliminated. You can feel free to use the built in networkx
+    #     maximum flow function or the maximum flow function you implemented as
+    #     part of the in class implementation activity.
+    #
+    #     saturated_edges: dictionary of saturated edges that maps team pairs to
+    #     the amount of additional games they have against each other
+    #     return: True if team is eliminated, False otherwise
+    #     '''
+    #     for  in saturated_edges:
+    #
+    #     if saturated_edges values - max_flow values  == 0
+    #         then False
+    #
+    #     else
+    #         true
+    #
+    #
+    #
+    #
+    #
+    #     return False
 
     def linear_programming(self, saturated_edges):
         '''Uses linear programming to determine if the team with given team ID
