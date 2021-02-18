@@ -115,20 +115,22 @@ class Division:
             self.G.add_edge((name1,name2),name2,capacity = np.Inf,flow = 0)
             self.G.add_edge((name1,name2),name1,capacity = np.Inf,flow = 0)
 
+        
         for (name1,name2) in saturated_edges.keys():
             if self.G["source"][(name1,name2)]["flow"] < self.G["source"][(name1,name2)]["capacity"]:
-                if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+                if  self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
                     self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
                     self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+                if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
                 elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
                     self.G["source"][(name1,name2)]["flow"] = self.G[name2]["sink"]["capacity"]
                     self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["capacity"]
-                elif self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
-                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
-                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
                 elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
                     self.G["source"][(name1,name2)]["flow"] = self.G[name1]["sink"]["capacity"]
                     self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["capacity"]
+           
 
         return saturated_edges
 
@@ -143,8 +145,8 @@ class Division:
         the amount of additional games they have against each other
         return: True if team is eliminated, False otherwise
         '''
-        for (name1,name2) in saturated_edges.keys():
-            if self.G["source"][(name1,name2)]["capacity"] - self.G["source"][(name1,name2)]["flow"] > 0:
+        for pair in saturated_edges.keys():
+            if self.G["source"][pair]["capacity"] - self.G["source"][pair]["flow"] > 0:
                 return True
         return False
 
