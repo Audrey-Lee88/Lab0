@@ -83,26 +83,6 @@ class Division:
         return flag1
     
 
-''' Cassandra plot code
-    def draw_graph(graph):
-        plt.figure(figsize=(12, 4))
-        plt.axis('off')
-
-        nx.draw_networkx_nodes(graph, layout, node_color='steelblue', node_size=600)
-        nx.draw_networkx_edges(graph, layout, edge_color='gray')
-        nx.draw_networkx_labels(graph, layout, font_color='white')
-
-        for u, v, e in graph.edges(data=True):
-            label = '{}/{}'.format(e['capacity'])
-            x = layout[u][0] * .6 + layout[v][0] * .4
-            y = layout[u][1] * .6 + layout[v][1] * .4
-            t = plt.text(x, y, label, size=16, color=color, 
-                        horizontalalignment='center', verticalalignment='center')
-            
-        plt.show()
-
-'''
-
     def create_network(self, teamID):
         '''Builds up the network needed for solving the badminton elimination
         problem as a network flows problem & stores it in self.G. Returns a
@@ -116,23 +96,40 @@ class Division:
         saturated_edges = {}
         base_cap = self.teams[teamID].wins + self.teams[teamID].remaining 
         for team in self.teams.values():
-            for oteam in self.teams.values():
-                if team != oteam and team != teamID and oteam != teamID:
-                    saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
-                    #adds edges to sink
-                    self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins)
-                    self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins)
-        
+            if team != teamID:
+                for oteam in self.teams.values():
+                    if team != oteam and oteam != teamID:
+                        if (oteam.name,team.name) not in saturated_edges:
+                            saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
+                            #adds edges to sink
+                            self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins,flow=0)
+                            self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins,flow=0)
+
         #adds saturated edges to self.G from source
         for pair in saturated_edges.keys():
-            for value in saturated_edges.values():
-                self.G.add_edge("source",pair,capacity=value) 
-                self.G.add_edge("source",pair,capacity=value)
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair],flow = 0) 
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair],flow = 0)
 
         #adds intermediatary edges
         for (name1,name2) in saturated_edges.keys():
-            self.G.add_edge((name1,name2),name2,capacity = np.Inf)
-            self.G.add_edge((name1,name2),name1,capacity = np.Inf)
+            self.G.add_edge((name1,name2),name2,capacity = np.Inf,flow = 0)
+            self.G.add_edge((name1,name2),name1,capacity = np.Inf,flow = 0)
+
+        for (name1,name2) in saturated_edges.keys():
+            if self.G["source"][(name1,name2)]["flow"] < self.G["source"][(name1,name2)]["capacity"]:
+                if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+                    self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+                elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+                    self.G["source"][(name1,name2)]["flow"] = self.G[name2]["sink"]["capacity"]
+                    self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["capacity"]
+                elif self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+                elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+                    self.G["source"][(name1,name2)]["flow"] = self.G[name1]["sink"]["capacity"]
+                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["capacity"]
+
         return saturated_edges
 
 
@@ -146,13 +143,10 @@ class Division:
         the amount of additional games they have against each other
         return: True if team is eliminated, False otherwise
         '''
-        result = False
-        flow_val, flow_dict = nx.maximum_flow(self.G,"source","sink")
         for (name1,name2) in saturated_edges.keys():
-            #print(flow_dict.get("source",(name1,name2)))
-            if self.G["source"][(name1,name2)]["capacity"] - flow_dict.get((name1,name2)) == 0:
+            if self.G["source"][(name1,name2)]["capacity"] - self.G["source"][(name1,name2)]["flow"] != 0:
                 result = True
-        return result
+        return False
 
     def linear_programming(self, saturated_edges):
         '''Uses linear programming to determine if the team with given team ID
