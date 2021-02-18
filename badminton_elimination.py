@@ -8,6 +8,8 @@ import picos as pic
 import networkx as nx
 import itertools
 import cvxopt
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class Division:
@@ -79,49 +81,78 @@ class Division:
                 flag1 = self.linear_programming(saturated_edges)
 
         return flag1
+    
+
+''' Cassandra plot code
+    def draw_graph(graph):
+        plt.figure(figsize=(12, 4))
+        plt.axis('off')
+
+        nx.draw_networkx_nodes(graph, layout, node_color='steelblue', node_size=600)
+        nx.draw_networkx_edges(graph, layout, edge_color='gray')
+        nx.draw_networkx_labels(graph, layout, font_color='white')
+
+        for u, v, e in graph.edges(data=True):
+            label = '{}/{}'.format(e['capacity'])
+            x = layout[u][0] * .6 + layout[v][0] * .4
+            y = layout[u][1] * .6 + layout[v][1] * .4
+            t = plt.text(x, y, label, size=16, color=color, 
+                        horizontalalignment='center', verticalalignment='center')
+            
+        plt.show()
+
+'''
 
     def create_network(self, teamID):
         '''Builds up the network needed for solving the badminton elimination
         problem as a network flows problem & stores it in self.G. Returns a
         dictionary of saturated edges that maps team pairs to the amount of
         additional games they have against each other.
-
         teamID: ID of team that we want to check if it is eliminated
         return: dictionary of saturated edges that maps team pairs to
         the amount of additional games they have against each other
         '''
+        #sets up saturated_edges dictionary
         saturated_edges = {}
+        base_cap = self.teams[teamID].wins + self.teams[teamID].remaining 
         for team in self.teams.values():
             for oteam in self.teams.values():
                 if team != oteam and team != teamID and oteam != teamID:
                     saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
-        self.G.add_edges_from(saturated_edges)
-        print(saturated_edges)
+                    #adds edges to sink
+                    self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins)
+                    self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins)
+        
+        #adds saturated edges to self.G from source
+        for pair in saturated_edges.keys():
+            for value in saturated_edges.values():
+                self.G.add_edge("source",pair,capacity=value) 
+                self.G.add_edge("source",pair,capacity=value)
+
+        #adds intermediatary edges
+        for (name1,name2) in saturated_edges.keys():
+            self.G.add_edge((name1,name2),name2,capacity = np.Inf)
+            self.G.add_edge((name1,name2),name1,capacity = np.Inf)
         return saturated_edges
 
-    # def network_flows(self, saturated_edges):
-    #     '''Uses network flows to determine if the team with given team ID
-    #     has been eliminated. You can feel free to use the built in networkx
-    #     maximum flow function or the maximum flow function you implemented as
-    #     part of the in class implementation activity.
-    #
-    #     saturated_edges: dictionary of saturated edges that maps team pairs to
-    #     the amount of additional games they have against each other
-    #     return: True if team is eliminated, False otherwise
-    #     '''
-    #     for  in saturated_edges:
-    #
-    #     if saturated_edges values - max_flow values  == 0
-    #         then False
-    #
-    #     else
-    #         true
-    #
-    #
-    #
-    #
-    #
-    #     return False
+
+    def network_flows(self, saturated_edges):
+        '''Uses network flows to determine if the team with given team ID
+        has been eliminated. You can feel free to use the built in networkx
+        maximum flow function or the maximum flow function you implemented as
+        part of the in class implementation activity.
+
+        saturated_edges: dictionary of saturated edges that maps team pairs to
+        the amount of additional games they have against each other
+        return: True if team is eliminated, False otherwise
+        '''
+        result = False
+        flow_val, flow_dict = nx.maximum_flow(self.G,"source","sink")
+        for (name1,name2) in saturated_edges.keys():
+            #print(flow_dict.get("source",(name1,name2)))
+            if self.G["source"][(name1,name2)]["capacity"] - flow_dict.get((name1,name2)) == 0:
+                result = True
+        return result
 
     def linear_programming(self, saturated_edges):
         '''Uses linear programming to determine if the team with given team ID
