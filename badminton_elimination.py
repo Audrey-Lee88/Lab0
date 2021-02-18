@@ -144,8 +144,8 @@ class Division:
         return: True if team is eliminated, False otherwise
         '''
         for (name1,name2) in saturated_edges.keys():
-            if self.G["source"][(name1,name2)]["capacity"] - self.G["source"][(name1,name2)]["flow"] != 0:
-                result = True
+            if self.G["source"][(name1,name2)]["capacity"] - self.G["source"][(name1,name2)]["flow"] > 0:
+                return True
         return False
 
     def linear_programming(self, saturated_edges):
@@ -227,6 +227,6 @@ if __name__ == '__main__':
         filename = sys.argv[1]
         division = Division(filename)
         for (ID, team) in division.teams.items():
-            print(f'{team.name}: Eliminated? {division.is_eliminated(team.ID, "Linear Programming")}')
+            print(f'{team.name}: Eliminated? {division.is_eliminated(team.ID, "Network Flows")}')
     else:
         print("To run this code, please specify an input file name. Example: python badminton_elimination.py teams2.txt.")
