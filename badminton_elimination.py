@@ -102,36 +102,35 @@ class Division:
                         if (oteam.name,team.name) not in saturated_edges:
                             saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
                             #adds edges to sink
-                            self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins,flow=0)
-                            self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins,flow=0)
+                            self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins)
+                            self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins)
 
         #adds saturated edges to self.G from source
         for pair in saturated_edges.keys():
-            self.G.add_edge("source",pair,capacity=saturated_edges[pair],flow = 0) 
-            self.G.add_edge("source",pair,capacity=saturated_edges[pair],flow = 0)
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair]) 
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair])
 
         #adds intermediatary edges
         for (name1,name2) in saturated_edges.keys():
-            self.G.add_edge((name1,name2),name2,capacity = np.Inf,flow = 0)
-            self.G.add_edge((name1,name2),name1,capacity = np.Inf,flow = 0)
+            self.G.add_edge((name1,name2),name2,capacity = np.Inf)
+            self.G.add_edge((name1,name2),name1,capacity = np.Inf)
 
-        
-        for (name1,name2) in saturated_edges.keys():
-            if self.G["source"][(name1,name2)]["flow"] < self.G["source"][(name1,name2)]["capacity"]:
-                if  self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
-                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
-                    self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
-                if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
-                    self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
-                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
-                elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
-                    self.G["source"][(name1,name2)]["flow"] = self.G[name2]["sink"]["capacity"]
-                    self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["capacity"]
-                elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
-                    self.G["source"][(name1,name2)]["flow"] = self.G[name1]["sink"]["capacity"]
-                    self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["capacity"]
+        #keep track of flow/add in flow -- nx maximum_flow function now worked, so we don't need this anymore and can delete out flow attribute from the edges above.
+        #for (name1,name2) in saturated_edges.keys():
+         #   if self.G["source"][(name1,name2)]["flow"] < self.G["source"][(name1,name2)]["capacity"]:
+          #      if  self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+           #         self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+            #        self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+             #   if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+              #      self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+               #     self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+                #elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+                 #   self.G["source"][(name1,name2)]["flow"] = self.G[name2]["sink"]["capacity"]
+                  #  self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["capacity"]
+               # elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+                #    self.G["source"][(name1,name2)]["flow"] = self.G[name1]["sink"]["capacity"]
+                 #   self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["capacity"]
            
-
         return saturated_edges
 
 
@@ -145,8 +144,10 @@ class Division:
         the amount of additional games they have against each other
         return: True if team is eliminated, False otherwise
         '''
+        flow_val,flow_dist = nx.maximum_flow(self.G,"source","sink")
         for pair in saturated_edges.keys():
-            if self.G["source"][pair]["capacity"] - self.G["source"][pair]["flow"] > 0:
+            if self.G["source"][pair]["capacity"] - flow_dist["source"][pair] > 0:
+            #This line not relevant: Used only if you calaculate flows by hand...if self.G["source"][pair]["capacity"] - self.G["source"][pair]["flow"] > 0:
                 return True
         return False
 
