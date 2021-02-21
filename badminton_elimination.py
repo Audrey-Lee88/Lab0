@@ -8,6 +8,8 @@ import picos as pic
 import networkx as nx
 import itertools
 import cvxopt
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 class Division:
@@ -80,24 +82,57 @@ class Division:
 
         return flag1
 
+
     def create_network(self, teamID):
         '''Builds up the network needed for solving the badminton elimination
         problem as a network flows problem & stores it in self.G. Returns a
         dictionary of saturated edges that maps team pairs to the amount of
         additional games they have against each other.
-
         teamID: ID of team that we want to check if it is eliminated
         return: dictionary of saturated edges that maps team pairs to
         the amount of additional games they have against each other
         '''
+        #sets up saturated_edges dictionary
         saturated_edges = {}
+        base_cap = self.teams[teamID].wins + self.teams[teamID].remaining
         for team in self.teams.values():
-            for oteam in self.teams.values():
-                if team != oteam and team != teamID and oteam != teamID:
-                    saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
-        self.G.add_edges_from(saturated_edges)
-        print(saturated_edges)
+            if team != teamID:
+                for oteam in self.teams.values():
+                    if team != oteam and oteam != teamID:
+                        if (oteam.name,team.name) not in saturated_edges:
+                            saturated_edges[(team.name,oteam.name)] = team.get_against(oteam.ID)
+                            #adds edges to sink
+                            self.G.add_edge(team.name,"sink",capacity = base_cap-team.wins)
+                            self.G.add_edge(oteam.name,"sink",capacity = base_cap-oteam.wins)
+
+        #adds saturated edges to self.G from source
+        for pair in saturated_edges.keys():
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair])
+            self.G.add_edge("source",pair,capacity=saturated_edges[pair])
+
+        #adds intermediatary edges
+        for (name1,name2) in saturated_edges.keys():
+            self.G.add_edge((name1,name2),name2,capacity = np.Inf)
+            self.G.add_edge((name1,name2),name1,capacity = np.Inf)
+
+        #keep track of flow/add in flow -- nx maximum_flow function now worked, so we don't need this anymore and can delete out flow attribute from the edges above.
+        #for (name1,name2) in saturated_edges.keys():
+         #   if self.G["source"][(name1,name2)]["flow"] < self.G["source"][(name1,name2)]["capacity"]:
+          #      if  self.G["source"][(name1,name2)]["capacity"] <= (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+           #         self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+            #        self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+             #   if self.G["source"][(name1,name2)]["capacity"] <= (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+              #      self.G["source"][(name1,name2)]["flow"] = self.G["source"][(name1,name2)]["capacity"]
+               #     self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["flow"] + self.G["source"][(name1,name2)]["flow"]
+                #elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name2]["sink"]["capacity"] - self.G[name2]["sink"]["flow"]):
+                 #   self.G["source"][(name1,name2)]["flow"] = self.G[name2]["sink"]["capacity"]
+                  #  self.G[name2]["sink"]["flow"] = self.G[name2]["sink"]["capacity"]
+               # elif self.G["source"][(name1,name2)]["capacity"] > (self.G[name1]["sink"]["capacity"] - self.G[name1]["sink"]["flow"]):
+                #    self.G["source"][(name1,name2)]["flow"] = self.G[name1]["sink"]["capacity"]
+                 #   self.G[name1]["sink"]["flow"] = self.G[name1]["sink"]["capacity"]
+
         return saturated_edges
+
 
     def network_flows(self, saturated_edges):
         '''Uses network flows to determine if the team with given team ID
@@ -109,18 +144,11 @@ class Division:
         the amount of additional games they have against each other
         return: True if team is eliminated, False otherwise
         '''
-        for  in saturated_edges:
-
-        if saturated_edges values - max_flow values  == 0
-            then False
-
-        else
-            true
-
-
-
-
-
+        flow_val,flow_dist = nx.maximum_flow(self.G,"source","sink")
+        for pair in saturated_edges.keys():
+            if self.G["source"][pair]["capacity"] - flow_dist["source"][pair] > 0:
+            #This line not relevant: Used only if you calaculate flows by hand...if self.G["source"][pair]["capacity"] - self.G["source"][pair]["flow"] > 0:
+                return True
         return False
 
     def linear_programming(self, saturated_edges):
@@ -202,6 +230,6 @@ if __name__ == '__main__':
         filename = sys.argv[1]
         division = Division(filename)
         for (ID, team) in division.teams.items():
-            print(f'{team.name}: Eliminated? {division.is_eliminated(team.ID, "Linear Programming")}')
+            print(f'{team.name}: Eliminated? {division.is_eliminated(team.ID, "Network Flows")}')
     else:
         print("To run this code, please specify an input file name. Example: python badminton_elimination.py teams2.txt.")
